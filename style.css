@@ -100,8 +100,18 @@ input::placeholder, textarea::placeholder{color:#9aa3ad}
 
 /* quick access grid */
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.box{padding:12px;border-radius:12px;background:linear-gradient(180deg,#ffffff,#fbfcff);box-shadow:var(--shadow);border:1px solid rgba(0,0,0,0.03)}
+.box{padding:12px;border-radius:12px;background:linear-gradient(180deg,#ffffff,#fbfcff);box-shadow:var(--shadow);border:1px solid rgba(0,0,0,0.03);transition:transform .18s ease,box-shadow .18s ease}
 .box h3{margin:0 0 6px 0;color:var(--primary-2)}
+
+/* Hover / resaltado animation para cajones de información */
+.box:hover,
+.patient-item:hover,
+.kv:hover,
+.proc:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 36px rgba(3,15,20,0.12);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
 
 /* layout for staff panel */
 .overlay{
@@ -152,7 +162,7 @@ input::placeholder, textarea::placeholder{color:#9aa3ad}
 .search{display:flex;gap:8px}
 .search input{flex:1;padding:8px;border-radius:10px;border:1px solid rgba(0,0,0,0.05)}
 .list .patient-item{
-  padding:8px;border-radius:10px;margin:8px 0;background:linear-gradient(180deg,#fff,#fafbfd);cursor:pointer;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(0,0,0,0.03)
+  padding:8px;border-radius:10px;margin:8px 0;background:linear-gradient(180deg,#fff,#fafbfd);cursor:pointer;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(0,0,0,0.03);transition:transform .18s ease,box-shadow .18s ease
 }
 .patient-item small{color:var(--muted)}
 .muted{color:var(--muted);font-size:13px}
@@ -160,16 +170,52 @@ input::placeholder, textarea::placeholder{color:#9aa3ad}
 /* detail view */
 .detail-card{background:linear-gradient(180deg,#fff,#fbfdff);padding:12px;border-radius:10px;border:1px solid rgba(0,0,0,0.03)}
 .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:8px}
-.kv{background:#ffffff;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.03)}
+.kv{background:#ffffff;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.03);transition:transform .18s ease,box-shadow .18s ease}
 
 /* timeline / procedures */
 .timeline{margin-top:12px}
 .proc{padding:8px;border-radius:10px;background:#f7fbfb;border-left:4px solid var(--primary-1);margin-bottom:8px}
 .proc small{display:block;color:var(--muted)}
 
+/* IG-style registration modal */
+.ig-modal{
+  width:320px;
+  max-width:92%;
+  background: linear-gradient(180deg,#ffffff,#fffbff);
+  border-radius:28px;
+  padding:18px 18px 22px 18px;
+  position:relative;
+  box-shadow: 0 20px 60px rgba(3,15,20,0.18);
+  text-align:center;
+}
+.ig-close{
+  position:absolute;
+  top:8px;
+  right:10px;
+  background:transparent;
+  border:none;
+  font-size:20px;
+  cursor:pointer;
+  line-height:1;
+  color:#333;
+}
+.ig-content h3{margin:6px 0 4px 0;color:var(--primary-2)}
+.ig-sub{margin:0 0 6px 0;font-weight:600}
+.ig-code{
+  margin:10px auto;
+  display:inline-block;
+  padding:8px 12px;
+  border-radius:10px;
+  background:linear-gradient(90deg,#f3f7f7,#ffffff);
+  border:1px dashed rgba(0,0,0,0.06);
+  font-weight:700;
+  letter-spacing:1px;
+}
+
 /* RESPONSIVE */
 @media (max-width:880px){
   .container{padding:12px}
   .left{display:none}
   .modal{width:100%}
+  .ig-modal{width:100%; border-radius:16px}
 }

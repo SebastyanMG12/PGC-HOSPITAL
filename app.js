@@ -47,6 +47,10 @@
   const formCompanion = $('#form-companion');
   const companionResult = $('#companion-result');
 
+  const modalRegistered = $('#modal-registered');
+  const regCodeEl = $('#reg-code');
+  const btnCloseRegistered = $('#btn-close-registered');
+
   /* ---------- Funciones de Usuarios ---------- */
   function getUsers(){ return read(STORAGE_KEYS.USERS) || []; }
   function saveUser(username,password,role){
@@ -97,7 +101,9 @@
       attending: null,
       admittedAt: null,
       dischargedAt: null,
-      procedures: [] // [{id,desc, performedBy, time}]
+      procedures: [], // [{id,desc, performedBy, time}]
+      // Nuevo campo: control de privacidad de procedimientos (por defecto NO compartir)
+      shareWithCompanion: false
     };
     const patients = getPatients();
     patients.unshift(patient);
@@ -131,8 +137,8 @@
 
     // Si el detalle del paciente está abierto y corresponde a este paciente, re-renderizarlo
     try {
-      const detailH3 = patientDetailEl.querySelector('h3');
-      if(detailH3 && detailH3.textContent === p.name){
+      const detailWrap = patientDetailEl.querySelector('[data-patient-id]');
+      if(detailWrap && detailWrap.getAttribute('data-patient-id') === p.id){
         showPatientDetail(p.id);
       }
     } catch(e){ /* safe */ }
@@ -224,6 +230,9 @@
           <button class="btn ghost" id="btn-set-admit">Marcar ingreso</button>
           <button class="btn ghost" id="btn-set-discharge">Marcar egreso</button>
         </div>
+        <div style="margin-top:10px">
+          <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="chk-share-proc" ${p.shareWithCompanion ? 'checked' : ''}/> Compartir historial de procedimientos con acompañante</label>
+        </div>
         <hr />
         <div>
           <h4>Agregar procedimiento / nota de atención</h4>
@@ -244,7 +253,8 @@
     });
     html += `</div></div>`;
 
-    patientDetailEl.innerHTML = html;
+    // Insertamos wrapper con data-patient-id para identificar por id en re-renders
+    patientDetailEl.innerHTML = `<div data-patient-id="${p.id}">` + html + `</div>`;
 
     // Enlazar botones
     if(role === 'medico' || role === 'admin'){
@@ -280,14 +290,37 @@
         showPatientDetail(p.id);
       });
 
+      // toggle compartir procedimientos
+      const chk = $('#chk-share-proc');
+      if(chk){
+        chk.addEventListener('change', ()=>{
+          updatePatient(p.id, { shareWithCompanion: !!chk.checked });
+          // Re-render lista y detalle
+          renderPatientList(searchInput.value);
+          showPatientDetail(p.id);
+        });
+      }
+
       $('#btn-add-proc').addEventListener('click', ()=>{
         const desc = $('#inp-proc-desc').value.trim();
         const by = $('#inp-proc-by').value.trim() || (currentSession() ? currentSession().username : 'staff');
         if(!desc) return alert('Describe el procedimiento');
+
+        // Verificar que campos obligatorios hayan sido completados
+        const fresh = getPatients().find(x=>x.id===p.id);
+        const missing = [];
+        if(!fresh.arrived) missing.push('Confirmar llegada');
+        if(!fresh.assignedRoom) missing.push('Asignar habitación/sala');
+        if(!fresh.assignedBed) missing.push('Asignar camilla');
+        if(!fresh.attending) missing.push('Asignar personal que atiende');
+        if(missing.length>0){
+          return alert('No es posible agregar procedimientos. Faltan campos obligatorios: ' + missing.join(', '));
+        }
+
         addProcedure(p.id, desc, by);
         $('#inp-proc-desc').value = '';
         $('#inp-proc-by').value = '';
-        // showPatientDetail(p.id); // ya hace addProcedure internamente la actualización
+        // showPatientDetail(p.id); // addProcedure ya actualiza
       });
     }
   }
@@ -303,12 +336,23 @@
 
     if(!name || !reason) { alert('Nombre y motivo son requeridos'); return; }
     const patient = createPatient({ name, doc, phone, reason, notes });
-    registerResult.innerHTML = `<strong>Registro recibido</strong>. Código público: <code>${patient.publicCode}</code> . Si deseas compartirlo con un acompañante, dale ese código.`;
+
+    // Mostrar modal tipo "Instagram" con código público
+    if(regCodeEl) regCodeEl.textContent = patient.publicCode;
+    if(modalRegistered) modalRegistered.classList.remove('hidden');
+
     formRegister.reset();
     renderPatientList(); // actualiza lista staff si está abierta
   });
 
   $('#btn-clear').addEventListener('click', ()=> formRegister.reset());
+
+  // Cerrar modal de registro
+  if(btnCloseRegistered){
+    btnCloseRegistered.addEventListener('click', ()=> {
+      if(modalRegistered) modalRegistered.classList.add('hidden');
+    });
+  }
 
   /* ---------- Login / create user ---------- */
   btnOpenLoginMed.addEventListener('click', ()=> openLoginModal('medico'));
@@ -317,8 +361,15 @@
     modalLogin.classList.remove('hidden');
     $('#login-role').value = role;
     $('#login-title').textContent = role === 'medico' ? 'Login - Personal Médico' : 'Login - Administración';
+    // limpiar campos por seguridad visual
+    $('#login-username').value = '';
+    $('#login-password').value = '';
   }
-  $('#btn-cancel-login').addEventListener('click', ()=> modalLogin.classList.add('hidden'));
+  $('#btn-cancel-login').addEventListener('click', ()=> {
+    modalLogin.classList.add('hidden');
+    $('#login-username').value = '';
+    $('#login-password').value = '';
+  });
 
   formCreateUser.addEventListener('submit', (ev)=>{
     ev.preventDefault();
@@ -342,6 +393,11 @@
     const r = $('#login-role').value;
     const user = loginUser(u,p,r);
     if(!user){ alert('Credenciales inválidas'); return; }
+
+    // limpiar campos del login para que no queden visibles
+    $('#login-username').value = '';
+    $('#login-password').value = '';
+
     modalLogin.classList.add('hidden');
     openStaffPanel(user);
   });
@@ -355,6 +411,9 @@
 
   btnLogout.addEventListener('click', ()=>{
     logout();
+    // limpiar inputs de login y reabrir modal (campo vacío)
+    $('#login-username').value = '';
+    $('#login-password').value = '';
     modalLogin.classList.remove('hidden');
   });
 
@@ -375,7 +434,7 @@
   function showCompanion(code){
     const p = getPatients().find(x=>x.publicCode === code);
     if(!p){ companionResult.innerHTML = `<div class="muted">Código no encontrado</div>`; return; }
-    // Mostrar información permitida: nombre, motivo, estado de llegada, procedimientos (sin doc ni internalId)
+    // Mostrar información permitida: nombre, motivo, estado de llegada, procedimientos (si y solo si el staff permitió compartir)
     let html = `<div class="detail-card"><h3>${p.name}</h3>
       <div class="detail-grid">
         <div class="kv"><strong>Motivo</strong><div class="muted">${p.reason || '-'}</div></div>
@@ -385,10 +444,18 @@
         <div class="kv"><strong>Atiende</strong><div class="muted">${p.attending || '-'}</div></div>
       </div>
       <div class="timeline"><h4>Procedimientos (tiempo real)</h4>`;
-    if(p.procedures.length===0) html += `<div class="muted">Sin procedimientos registrados</div>`;
-    p.procedures.forEach(pr=>{
-      html += `<div class="proc"><strong>${pr.desc}</strong><small>${pr.performedBy || '---'} · ${new Date(pr.time).toLocaleString()}</small></div>`;
-    });
+
+
+    if(!p.shareWithCompanion){
+      // Si no hay consentimiento para compartir procedimientos
+      html += `<div class="muted">Los procedimientos son privados para este paciente. No están disponibles para acompañantes.</div>`;
+    } else {
+      if(!p.procedures || p.procedures.length===0) html += `<div class="muted">Sin procedimientos registrados</div>`;
+      (p.procedures || []).forEach(pr=>{
+        html += `<div class="proc"><strong>${pr.desc}</strong><small>${pr.performedBy || '---'} · ${new Date(pr.time).toLocaleString()}</small></div>`;
+      });
+    }
+
     html += `</div></div>`;
     companionResult.innerHTML = html;
   }
@@ -403,11 +470,11 @@
     // Si panel staff está abierto, actualizar lista y detalle actuales
     if(!panelStaff.classList.contains('hidden')){
       renderPatientList(searchInput.value.trim());
-      // si hay detalle visible, re-render it
-      const detail = patientDetailEl.querySelector('h3');
-      if(detail){
-        const name = detail.textContent;
-        const p = getPatients().find(x=>x.name === name);
+      // si hay detalle visible, re-render it por id
+      const detailWrap = patientDetailEl.querySelector('[data-patient-id]');
+      if(detailWrap){
+        const pid = detailWrap.getAttribute('data-patient-id');
+        const p = getPatients().find(x=>x.id === pid);
         if(p) showPatientDetail(p.id);
       }
     }

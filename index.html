@@ -38,7 +38,7 @@
           <button class="btn ghost" type="button" id="btn-clear">Limpiar</button>
         </div>
       </form>
-      <div id="register-result" class="muted"></div>
+      <div id="register-result" class="muted" style="display:none;"></div>
       <small class="muted">Al registrarte se genera un código público para que tus acompañantes consulten el estado.</small>
     </section>
 
@@ -62,8 +62,6 @@
         </div>
       </div>
     </section>
-
- 
 
   <!-- MODALES / PANELES -->
   <!-- Login Modal -->
@@ -96,6 +94,19 @@
             <button class="btn ghost" id="btn-cancel-login" type="button">Cerrar</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Registration success "instagram style" modal -->
+  <div class="overlay hidden" id="modal-registered">
+    <div class="ig-modal">
+      <button class="ig-close" id="btn-close-registered" aria-label="Cerrar">&times;</button>
+      <div class="ig-content">
+        <h3>Registro exitoso</h3>
+        <p class="ig-sub">Tu código público es:</p>
+        <div class="ig-code" id="reg-code">--</div>
+        <p class="muted">Guarda y comparte este código solo con tus acompañantes autorizados.</p>
       </div>
     </div>
   </div>
