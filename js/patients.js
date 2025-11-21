@@ -51,7 +51,10 @@
       admittedAt: null,
       dischargedAt: null,
       procedures: [],
-      shareWithCompanion: false
+      shareWithCompanion: false,
+      // nuevo: diagnóstico y permiso para compartir
+      finalDiagnosis: null,
+      shareDiagnosis: false
     };
     const patients = getPatients();
     patients.unshift(patient);

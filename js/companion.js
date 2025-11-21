@@ -50,6 +50,7 @@
       return;
     }
 
+    // Build HTML with companion info and diagnosis (if allowed)
     let html = `<div class="ig-content-large">
       <h3>${utils ? utils.escapeHtml(p.name) : p.name}</h3>
       <div class="detail-grid">
@@ -58,8 +59,19 @@
         ${buildStatusHtml(p)}
         <div class="kv"><strong>Llegada</strong><div class="muted">${p.arrived ? 'Confirmada '+ new Date(p.arrivedAt).toLocaleString() : 'Pendiente'}</div></div>
         <div class="kv"><strong>Hab / Camilla</strong><div class="muted">${utils ? utils.escapeHtml(p.assignedRoom || '-') : (p.assignedRoom||'-')} / ${utils ? utils.escapeHtml(p.assignedBed || '-') : (p.assignedBed||'-')}</div></div>
-        <div class="kv"><strong>Atiende</strong><div class="muted">${utils ? utils.escapeHtml(p.attending || '-') : (p.attending||'-')}</div></div>
-      </div>
+        <div class="kv"><strong>Atiende</strong><div class="muted">${utils ? utils.escapeHtml(p.attending || '-') : (p.attending||'-')}</div></div>`;
+
+    // Companion info (nuevo — mostrar datos del acompañante al visitante)
+    html += `<div class="kv"><strong>Acompañante</strong><div class="muted">${p.companionName ? `${utils ? utils.escapeHtml(p.companionName) : p.companionName} · ${utils ? utils.escapeHtml(p.companionRelation || '') : (p.companionRelation||'')} · ${utils ? utils.escapeHtml(p.companionPhone || '') : (p.companionPhone||'')}` : '-'}</div></div>`;
+
+    // Diagnóstico final — solo mostrar si el doctor permitió compartir (shareDiagnosis)
+    if(p.shareDiagnosis){
+      html += `<div class="kv"><strong>Diagnóstico final</strong><div class="muted">${p.finalDiagnosis ? (utils ? utils.escapeHtml(p.finalDiagnosis) : p.finalDiagnosis) : 'Sin diagnóstico registrado'}</div></div>`;
+    } else {
+      html += `<div class="kv"><strong>Diagnóstico final</strong><div class="muted">No disponible</div></div>`;
+    }
+
+    html += `</div>
       <div class="timeline"><h4>Procedimientos (tiempo real)</h4>`;
 
     if(!p.shareWithCompanion){
