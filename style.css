@@ -98,6 +98,23 @@ input::placeholder, textarea::placeholder{color:#9aa3ad}
 }
 .btn:hover{transform:translateY(-2px);transition:all .12s ease}
 
+/* Variant buttons: green / red for filters */
+.btn.green{
+  background: linear-gradient(135deg,#22c55e,#16a34a);
+  color:white;
+  box-shadow: 0 8px 22px rgba(34,197,94,0.12);
+}
+.btn.red{
+  background: linear-gradient(135deg,#ef4444,#dc2626);
+  color:white;
+  box-shadow: 0 8px 22px rgba(239,68,68,0.12);
+}
+/* active state for filter buttons */
+.btn.active{
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.18);
+}
+
 /* quick access grid */
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 .box{padding:12px;border-radius:12px;background:linear-gradient(180deg,#ffffff,#fbfcff);box-shadow:var(--shadow);border:1px solid rgba(0,0,0,0.03);transition:transform .18s ease,box-shadow .18s ease}
@@ -107,7 +124,9 @@ input::placeholder, textarea::placeholder{color:#9aa3ad}
 .box:hover,
 .patient-item:hover,
 .kv:hover,
-.proc:hover {
+.proc:hover,
+.room-item:hover,
+.doctor-item:hover {
   transform: translateY(-6px);
   box-shadow: 0 18px 36px rgba(3,15,20,0.12);
   transition: transform .18s ease, box-shadow .18s ease;
@@ -121,7 +140,7 @@ input::placeholder, textarea::placeholder{color:#9aa3ad}
   align-items:center;
   justify-content:center;
   background:rgba(7,11,14,0.35);
-  z-index:50;
+  z-index:50; /* default overlay z-index; overridden by specific IDs below */
   padding:20px;
 }
 .hidden{display:none}
@@ -174,8 +193,9 @@ input::placeholder, textarea::placeholder{color:#9aa3ad}
 
 /* timeline / procedures */
 .timeline{margin-top:12px}
-.proc{padding:8px;border-radius:10px;background:#f7fbfb;border-left:4px solid var(--primary-1);margin-bottom:8px}
+.proc{padding:8px;border-radius:10px;background:#f7fbfb;border-left:4px solid var(--primary-1);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
 .proc small{display:block;color:var(--muted)}
+.proc .proc-actions button{margin-left:8px}
 
 /* IG-style registration modal */
 .ig-modal{
@@ -187,6 +207,8 @@ input::placeholder, textarea::placeholder{color:#9aa3ad}
   position:relative;
   box-shadow: 0 20px 60px rgba(3,15,20,0.18);
   text-align:center;
+  max-height:80vh;
+  overflow:auto;
 }
 .ig-close{
   position:absolute;
@@ -212,10 +234,77 @@ input::placeholder, textarea::placeholder{color:#9aa3ad}
   letter-spacing:1px;
 }
 
+/* IG large modal (scrollable, suitable for detailed patient / assignment views) */
+.ig-modal-large{
+  width:920px;
+  max-width:96%;
+  background: linear-gradient(180deg,#ffffff,#fbfdff);
+  border-radius:18px;
+  padding:18px;
+  position:relative;
+  box-shadow: 0 30px 80px rgba(3,15,20,0.24);
+  max-height:88vh;
+  overflow:auto;
+}
+.ig-content-large{
+  padding-top:6px;
+}
+
+/* room/doctor lists used inside modals */
+.room-list, .doctor-list {
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+}
+.room-item, .doctor-item {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px;
+  border-radius:10px;
+  background:linear-gradient(180deg,#fff,#fbfcff);
+  border:1px solid rgba(0,0,0,0.04);
+}
+
+/* small badges */
+.badge {
+  padding:6px 8px;
+  border-radius:8px;
+  background:linear-gradient(90deg,#f0f8f8,#ffffff);
+  border:1px solid rgba(0,0,0,0.04);
+  font-weight:700;
+}
+
+/* table for audits */
+.audit-table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:12px;
+}
+.audit-table th, .audit-table td{
+  padding:8px 6px;
+  border-bottom:1px solid rgba(0,0,0,0.04);
+  text-align:left;
+  font-size:13px;
+}
+.audit-group{margin-top:12px;border-radius:10px;padding:8px;background:linear-gradient(180deg,#fff,#fafbfd);border:1px solid rgba(0,0,0,0.03)}
+
+/* === Z-index fixes for modals so they always appear in front of the staff panel === */
+#panel-staff{
+  z-index: 60; /* panel staff stays above default overlays but below modal-view */
+}
+#modal-registered{
+  z-index: 9998; /* registration modal slightly below main interactive modal-view */
+}
+#modal-view{
+  z-index: 9999; /* ensure the large modal used for staff actions is always topmost */
+}
+
 /* RESPONSIVE */
 @media (max-width:880px){
   .container{padding:12px}
   .left{display:none}
   .modal{width:100%}
   .ig-modal{width:100%; border-radius:16px}
+  .ig-modal-large{width:100%; padding:12px}
 }

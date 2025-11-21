@@ -46,14 +46,9 @@
       <h2>Accesos Rápidos</h2>
       <div class="grid">
         <div class="box">
-          <h3>Médico / Enfermería</h3>
-          <p>Accede al módulo con usuario y contraseña (crea usuarios localmente).</p>
-          <button class="btn primary" id="open-login-med">Ir al Login</button>
-        </div>
-        <div class="box">
-          <h3>Administración</h3>
-          <p>Panel de administración local.</p>
-          <button class="btn" id="open-login-admin">Ir al Login</button>
+          <h3>Personal del hospital</h3>
+          <p>Médicos, enfermería y administración (acceso unificado).</p>
+          <button class="btn primary" id="open-login-staff">Ir al Login</button>
         </div>
         <div class="box">
           <h3>Acompañante (Público)</h3>
@@ -111,12 +106,24 @@
     </div>
   </div>
 
+  <!-- General large scrollable modal used for staff actions and for companion view -->
+  <div class="overlay hidden" id="modal-view">
+    <div class="ig-modal-large" role="dialog" aria-modal="true">
+      <button class="ig-close" id="btn-close-view" aria-label="Cerrar">&times;</button>
+      <div class="ig-content-large" id="modal-view-content">
+        <!-- Contenido dinámico -->
+      </div>
+    </div>
+  </div>
+
   <!-- Staff Panel -->
   <div class="overlay hidden" id="panel-staff">
     <div class="panel">
       <header class="panel-header">
         <h3 id="panel-title">Panel</h3>
-        <div>
+        <div class="panel-actions">
+          <button class="btn green" id="btn-view-active">Activos</button>
+          <button class="btn red" id="btn-view-egresados">Egresados</button>
           <button class="btn ghost" id="btn-logout">Cerrar sesión</button>
         </div>
       </header>
@@ -137,7 +144,7 @@
     </div>
   </div>
 
-  <!-- Companion Panel -->
+  <!-- Companion (uses modal-view) -->
   <div class="overlay hidden" id="panel-companion">
     <div class="modal">
       <h3>Consulta Acompañante</h3>
@@ -148,7 +155,6 @@
           <button class="btn ghost" id="btn-close-companion" type="button">Cerrar</button>
         </div>
       </form>
-      <div id="companion-result"></div>
     </div>
   </div>
 
