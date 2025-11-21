@@ -62,6 +62,15 @@
     });
   }
 
+  // CLOSE handler for login modal (fix #2)
+  const btnCancelLogin = document.getElementById('btn-cancel-login');
+  if(btnCancelLogin){
+    btnCancelLogin.addEventListener('click', ()=> {
+      const loginModal = document.getElementById('modal-login');
+      if(loginModal) loginModal.classList.add('hidden');
+    });
+  }
+
   // login form wiring (exists in index.html)
   const formLogin = document.getElementById('form-login');
   const formCreateUser = document.getElementById('form-create-user');

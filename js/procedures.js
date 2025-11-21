@@ -19,6 +19,10 @@
 
     audit.logAudit({ action:'add_procedure', patientId, procedureId: proc.id, performedBy: proc.performedBy, details: { desc } });
     window.dispatchEvent(new CustomEvent('eseb:procedure:added', { detail: { patientId, procedure: proc } }));
+    // also emit patient updated so all listeners refresh consistently
+    try{
+      window.dispatchEvent(new CustomEvent('eseb:patient:updated', { detail: p }));
+    }catch(e){}
     return proc;
   }
 
@@ -38,6 +42,10 @@
 
     audit.logAudit({ action:'edit_procedure', patientId, procedureId, user: (window.eseb.auth.currentSession() ? window.eseb.auth.currentSession().username : 'system'), details: { before, after: proc } });
     window.dispatchEvent(new CustomEvent('eseb:procedure:edited', { detail: { patientId, procedure: proc } }));
+    // IMPORTANT: also emit patient updated so UI (staff detail, companion view) refresh immediately (fix #3)
+    try{
+      window.dispatchEvent(new CustomEvent('eseb:patient:updated', { detail: p }));
+    }catch(e){}
     return proc;
   }
 

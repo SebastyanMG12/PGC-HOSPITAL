@@ -99,6 +99,11 @@
     }
 
     // role medico — render editable detail with companion inputs
+    // Determine disabled states for buttons
+    const arrivedDisabled = p.arrived ? 'disabled' : '';
+    const admitDisabled = p.admittedAt ? 'disabled' : '';
+    const dischargeDisabled = p.dischargedAt ? 'disabled' : '';
+
     let html = `<div>
       <div class="detail-card">
         <h3>${utils ? utils.escapeHtml(p.name) : p.name}</h3>
@@ -117,6 +122,7 @@
           <div class="kv"><strong>Estado</strong><div class="muted">${patientStatus(p)}</div></div>
           <div class="kv"><strong>Hab / Camilla</strong><div class="muted">${utils ? utils.escapeHtml(p.assignedRoom || '-') : (p.assignedRoom||'-')} / ${utils ? utils.escapeHtml(p.assignedBed || '-') : (p.assignedBed||'-')}</div></div>
           <div class="kv"><strong>Atiende</strong><div class="muted">${utils ? utils.escapeHtml(p.attending || '-') : (p.attending||'-')}</div></div>
+          <div class="kv"><strong>Llegada</strong><div class="muted">${p.arrived ? new Date(p.arrivedAt).toLocaleString() : 'Pendiente'}</div></div>
           <div class="kv"><strong>Ingreso</strong><div class="muted">${p.admittedAt ? new Date(p.admittedAt).toLocaleString() : '-'}</div></div>
           <div class="kv"><strong>Egreso</strong><div class="muted">${p.dischargedAt ? new Date(p.dischargedAt).toLocaleString() : '-'}</div></div>
         </div>
@@ -137,11 +143,11 @@
     html += `<div style="margin-top:10px" class="detail-card">
         <strong>Acciones</strong>
         <div style="margin-top:8px" class="row">
-          <button class="btn primary" id="btn-open-confirm-arrival">${p.arrived ? 'Llegada confirmada' : 'Confirmar llegada'}</button>
+          <button class="btn primary" id="btn-open-confirm-arrival" ${arrivedDisabled}>${p.arrived ? 'Llegada confirmada' : 'Confirmar llegada'}</button>
           <button class="btn" id="btn-open-assign-room">Asignar Hab/Cam</button>
           <button class="btn" id="btn-open-assign-doctor">Asignar personal</button>
-          <button class="btn ghost" id="btn-open-set-admit">${p.admittedAt ? 'Ingreso marcado' : 'Marcar ingreso'}</button>
-          <button class="btn ghost" id="btn-open-set-discharge">${p.dischargedAt ? 'Egreso marcado' : 'Marcar egreso'}</button>
+          <button class="btn ghost" id="btn-open-set-admit" ${admitDisabled}>${p.admittedAt ? 'Ingreso marcado' : 'Marcar ingreso'}</button>
+          <button class="btn ghost" id="btn-open-set-discharge" ${dischargeDisabled}>${p.dischargedAt ? 'Egreso marcado' : 'Marcar egreso'}</button>
         </div>
         <div style="margin-top:10px">
           <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="chk-share-proc" ${p.shareWithCompanion ? 'checked' : ''}/> Compartir historial de procedimientos con acompañante</label>
@@ -180,21 +186,62 @@
 
     if(patientDetailEl) patientDetailEl.innerHTML = `<div data-patient-id="${p.id}">` + html + `</div>`;
 
-    // Companion save handler
+    // Companion save handler (fix #1 and #2)
     const btnSaveComp = document.getElementById('btn-save-companion');
     if(btnSaveComp){
       btnSaveComp.addEventListener('click', ()=>{
         const compName = document.getElementById('inp-comp-name').value.trim() || null;
         const compPhone = document.getElementById('inp-comp-phone').value.trim() || null;
         const compRel = document.getElementById('inp-comp-rel').value.trim() || null;
-        if(patientsApi && patientsApi.updatePatient){
-          patientsApi.updatePatient(p.id, {
-            companionName: compName,
-            companionPhone: compPhone,
-            companionRelation: compRel
-          }, { action:'update_companion', details: { companionName: compName, companionPhone: compPhone, companionRelation: compRel }});
+
+        // VALIDATION: if all companion fields empty -> show message (change #1)
+        const allEmpty = (!compName || compName === '') && (!compPhone || compPhone === '') && (!compRel || compRel === '');
+        if(allEmpty){
+          // show friendly message and do not save
+          if(modals && modals.openModalLarge){
+            const htmlMsg = `<div class="ig-content-large"><h3>Faltan datos</h3><p class="muted">Debes agregar al menos un campo del acompañante (nombre, teléfono o parentesco) antes de guardar.</p></div>`;
+            modals.openModalLarge(htmlMsg);
+            setTimeout(()=> { if(modals && modals.closeModalLarge) modals.closeModalLarge(); }, 1600);
+          } else {
+            alert('Debes agregar al menos el nombre, teléfono o parentesco del acompañante antes de guardar.');
+          }
+          return;
         }
-        showPatientDetail(p.id); // re-render detail
+
+        // Save and ensure companion info is propagated in real-time (change #2)
+        let updatedPatient = null;
+        if(patientsApi && patientsApi.updatePatient){
+          try {
+            updatedPatient = patientsApi.updatePatient(p.id, {
+              companionName: compName,
+              companionPhone: compPhone,
+              companionRelation: compRel
+            }, { action:'update_companion', details: { companionName: compName, companionPhone: compPhone, companionRelation: compRel }});
+          } catch(e){
+            console.warn('Error actualizando acompañante', e);
+          }
+        }
+
+        // Show confirmation window (simple modal)
+        if(modals && modals.openModalLarge){
+          const htmlMsg = `<div class="ig-content-large"><h3>Información guardada</h3><p class="muted">La información del acompañante se ha guardado correctamente.</p></div>`;
+          modals.openModalLarge(htmlMsg);
+          setTimeout(()=> { if(modals && modals.closeModalLarge) modals.closeModalLarge(); }, 1400);
+        } else {
+          alert('Información guardada correctamente');
+        }
+
+        // Force-emission of patient updated so companion module (y otras vistas) se refresquen inmediatamente
+        // patientsApi.updatePatient ya despacha 'eseb:patient:updated', pero emitimos de nuevo con el objeto retornado por seguridad.
+        if(updatedPatient){
+          try{
+            window.dispatchEvent(new CustomEvent('eseb:patient:updated', { detail: updatedPatient }));
+          }catch(e){}
+        }
+
+        // re-render detail and list - admin and companion listeners will react to eseb:patient:updated
+        showPatientDetail(p.id); // re-render detail in this view
+        renderPatientList(searchInput ? searchInput.value.trim() : '');
       });
     }
 
@@ -341,36 +388,87 @@
     }, 10);
   }
 
+  /* ---------------------------
+     Asignar doctor (mejoras para refrescar en tiempo real cuando cambian doctores)
+     --------------------------- */
   function openAssignDoctorModal(patientId){
-    const doctors = doctorsApi && doctorsApi.getDoctors ? doctorsApi.getDoctors() : [];
-    let html = `<div class="ig-content-large"><h3>Asignar personal (doctor/enfermero)</h3>
-      <p class="muted">Selecciona el personal que atenderá (puede atender a varios pacientes).</p>
-      <div class="doctor-list">`;
-    doctors.forEach(doc => {
-      html += `<div class="doctor-item"><div><strong>${utils ? utils.escapeHtml(doc.name) : doc.name}</strong><div class="muted">Atendiendo: ${doc.patients ? doc.patients.length : 0} pacientes</div></div>
-                <div><button class="btn" data-assign-doctor="${utils ? utils.escapeHtml(doc.id) : doc.id}">Asignar</button></div></div>`;
-    });
-    html += `</div><div style="margin-top:12px"><button class="btn ghost" id="btn-cancel-assign-doc">Cerrar</button></div></div>`;
-    if(modals && modals.openModalLarge) modals.openModalLarge(html);
-    setTimeout(()=>{
+    // We'll build the modal content and attach a listener to eseb:doctors:changed
+    const buildHtml = ()=>{
+      const doctors = doctorsApi && doctorsApi.getDoctors ? doctorsApi.getDoctors() : [];
+      let html = `<div class="ig-content-large"><h3>Asignar personal (doctor/enfermero)</h3>
+        <p class="muted">Selecciona el personal que atenderá (puede atender a varios pacientes).</p>
+        <div class="doctor-list">`;
+      doctors.forEach(doc => {
+        html += `<div class="doctor-item"><div><strong>${utils ? utils.escapeHtml(doc.name) : doc.name}</strong><div class="muted">Atendiendo: ${doc.patients ? doc.patients.length : 0} pacientes</div></div>
+                  <div><button class="btn" data-assign-doctor="${utils ? utils.escapeHtml(doc.id) : doc.id}">Asignar</button></div></div>`;
+      });
+      html += `</div><div style="margin-top:12px"><button class="btn ghost" id="btn-cancel-assign-doc">Cerrar</button></div></div>`;
+      return html;
+    };
+
+    // Render initial modal
+    if(modals && modals.openModalLarge) modals.openModalLarge(buildHtml());
+
+    // Handler that attaches to dynamic buttons; we'll call it on initial render and whenever doctors change
+    const attachHandlers = ()=>{
+      // assign buttons
       const assignBtns = document.querySelectorAll('[data-assign-doctor]');
       assignBtns.forEach(btn => {
-        btn.addEventListener('click', ()=> {
-          const docId = btn.getAttribute('data-assign-doctor');
+        // avoid double-binding by cloning node: remove and reattach fresh listener by replacing with same element (simple guard)
+        // (simpler approach: remove all listeners by replacing node)
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.addEventListener('click', ()=> {
+          const docId = newBtn.getAttribute('data-assign-doctor');
           try{
             if(doctorsApi && doctorsApi.assignPatientToDoctor) doctorsApi.assignPatientToDoctor(docId, patientId);
             const doc = doctorsApi.getDoctors().find(d => d.id === docId);
             if(patientsApi && patientsApi.updatePatient) patientsApi.updatePatient(patientId, { attending: doc.name }, { action:'assign_staff', details: { staffId: doc.id, staffName: doc.name }});
             renderPatientList(searchInput ? searchInput.value.trim() : '');
             showPatientDetail(patientId);
+            // cleanup listener and close modal
+            window.removeEventListener('eseb:doctors:changed', doctorsChangedHandler);
             if(modals && modals.closeModalLarge) modals.closeModalLarge();
           }catch(err){
             alert(err.message || 'Error asignando personal');
           }
         });
       });
+
+      // cancel button
       const cancel = document.getElementById('btn-cancel-assign-doc');
-      if(cancel) cancel.addEventListener('click', ()=> { if(modals && modals.closeModalLarge) modals.closeModalLarge(); });
+      if(cancel){
+        const newCancel = cancel.cloneNode(true);
+        cancel.parentNode.replaceChild(newCancel, cancel);
+        newCancel.addEventListener('click', ()=> {
+          window.removeEventListener('eseb:doctors:changed', doctorsChangedHandler);
+          if(modals && modals.closeModalLarge) modals.closeModalLarge();
+        });
+      }
+    };
+
+    // Handler to refresh modal content when doctors change
+    const doctorsChangedHandler = ()=>{
+      // if modal is open, re-render content and reattach handlers
+      try{
+        const modalContent = document.getElementById('modal-view-content');
+        const modalView = document.getElementById('modal-view');
+        if(modalView && !modalView.classList.contains('hidden') && modalContent){
+          modalContent.innerHTML = buildHtml();
+          // small timeout to wait DOM to be replaced
+          setTimeout(()=> attachHandlers(), 10);
+        } else {
+          // if modal closed, remove listener defensively
+          window.removeEventListener('eseb:doctors:changed', doctorsChangedHandler);
+        }
+      }catch(e){}
+    };
+
+    // initial attach
+    setTimeout(()=> {
+      attachHandlers();
+      // listen for doctor changes to refresh counts in real-time
+      window.addEventListener('eseb:doctors:changed', doctorsChangedHandler);
     }, 10);
   }
 
@@ -425,6 +523,9 @@
           if(doc && doctorsApi && doctorsApi.removePatientFromDoctor) doctorsApi.removePatientFromDoctor(doc.id, patientId);
         }
         if(patientsApi && patientsApi.updatePatient) patientsApi.updatePatient(patientId, { dischargedAt: utils.now() }, { action:'mark_discharge' });
+
+        // After discharge we must ensure UI reflects doctor counts (doctors.saveDoctors triggers 'eseb:doctors:changed')
+        // render lists & detail
         renderPatientList(searchInput ? searchInput.value.trim() : '');
         showPatientDetail(patientId);
         if(modals && modals.closeModalLarge) modals.closeModalLarge();
@@ -549,6 +650,7 @@
         <div><strong>Estado</strong><div class="muted">${patientStatus(p)}</div></div>
         <div><strong>Hab / Camilla</strong><div class="muted">${utils ? utils.escapeHtml(p.assignedRoom||'-') : (p.assignedRoom||'-')} / ${utils ? utils.escapeHtml(p.assignedBed||'-') : (p.assignedBed||'-')}</div></div>
         <div><strong>Atiende</strong><div class="muted">${utils ? utils.escapeHtml(p.attending || '-') : (p.attending||'-')}</div></div>
+        <div><strong>Llegada</strong><div class="muted">${p.arrived ? new Date(p.arrivedAt).toLocaleString() : '-'}</div></div>
         <div><strong>Ingreso</strong><div class="muted">${p.admittedAt ? new Date(p.admittedAt).toLocaleString() : '-'}</div></div>
         <div style="grid-column:1/3"><strong>Notas</strong><div class="muted">${utils ? utils.escapeHtml(p.notes || '-') : (p.notes||'-')}</div></div>
         <div style="grid-column:1/3"><strong>Acompañante</strong><div class="muted">${p.companionName ? `${utils ? utils.escapeHtml(p.companionName) : p.companionName} · ${utils ? utils.escapeHtml(p.companionRelation || '') : (p.companionRelation||'')} · ${utils ? utils.escapeHtml(p.companionPhone || '') : (p.companionPhone||'')}` : '-'}</div></div>
